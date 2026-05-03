@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alive | Interactive Storyline AI</title>
+	<link rel="icon" href="/logo.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --surface: rgba(30, 41, 59, 0.7);
+    --surface-solid: #1e293b;
+    --surface-light: rgba(255, 255, 255, 0.05);
+    --border: rgba(255, 255, 255, 0.1);
+    --accent: #6366f1; /* Indigo */
+    --accent-glow: rgba(99, 102, 241, 0.4);
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --radius-lg: 20px;
+    --radius-md: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  body { 
+    background: radial-gradient(circle at top right, #1e1b4b, #0b0f1a);
+    color: var(--text); 
+    height: 100vh; 
+    display: flex; 
+    flex-direction: column; 
+    overflow: hidden; 
+  }
+
+  /* Header Styling */
+  header { 
+    background: rgba(11, 15, 26, 0.8);
+    backdrop-filter: blur(12px);
+    padding: 1rem 2.5rem; 
+    border-bottom: 1px solid var(--border); 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    z-index: 100;
+  }
+
+  .header-controls { display: flex; gap: 1rem; align-items: center; }
+
+  .api-input, .mode-select { 
+    background: var(--surface-light); 
+    border: 1px solid var(--border); 
+    color: var(--text); 
+    padding: 0.6rem 1rem; 
+    border-radius: var(--radius-md); 
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+  }
+  .api-input:focus, .mode-select:focus { 
+    outline: none; 
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  /* Main Chat Area */
+  main { 
+    flex: 1; 
+    overflow-y: auto; 
+    padding: 2rem 1rem 10rem; 
+    scroll-behavior: smooth; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+  }
+
+  .chat-container { width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 2rem; }
+
+  /* Message Bubbles */
+  .message { display: flex; flex-direction: column; width: 100%; animation: slideUp 0.4s ease-out; }
+  .message.user { align-items: flex-end; }
+  .message.ai { align-items: flex-start; }
+
+  .bubble { 
+    padding: 1rem 1.5rem; 
+    border-radius: var(--radius-lg); 
+    max-width: 80%; 
+    line-height: 1.6; 
+    font-size: 0.95rem;
+  }
+
+  .message.user .bubble { 
+    background: var(--accent); 
+    color: white;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 4px 15px var(--accent-glow);
+  }
+
+  /* Story Nodes (AI) */
+  .story-node { 
+    background: var(--surface); 
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border); 
+    border-radius: var(--radius-lg); 
+    padding: 2rem; 
+    position: relative; 
+    width: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  .step-badge { 
+    position: absolute; 
+    top: -14px; 
+    left: 24px; 
+    background: linear-gradient(135deg, var(--accent), #8b5cf6); 
+    color: white; 
+    font-size: 0.7rem; 
+    letter-spacing: 0.05em;
+    font-weight: 800; 
+    padding: 0.35rem 1rem; 
+    border-radius: 50px; 
+    text-transform: uppercase;
+  }
+
+  .story-node h3 { margin-bottom: 1rem; font-weight: 700; color: #fff; font-size: 1.25rem; }
+  .story-node p { color: var(--text-muted); margin-bottom: 1.5rem; }
+
+  /* Options Grid */
+  .node-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .option-btn { 
+    background: var(--surface-light); 
+    border: 1px solid var(--border); 
+    color: var(--text); 
+    padding: 1rem; 
+    border-radius: var(--radius-md); 
+    cursor: pointer; 
+    text-align: left; 
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .option-btn:hover:not(:disabled) { 
+    background: white; 
+    color: #000; 
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  }
+
+  .option-btn.selected { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* Input Bar */
+  .input-wrapper { 
+    position: fixed; 
+    bottom: 0; 
+    left: 0; 
+    width: 100%; 
+    padding: 2rem; 
+    background: linear-gradient(transparent, var(--bg) 50%); 
+    display: flex; 
+    justify-content: center; 
+  }
+
+  .input-container { 
+    width: 100%; 
+    max-width: 800px; 
+    background: rgba(30, 41, 59, 0.8); 
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border); 
+    border-radius: 2rem; 
+    display: flex; 
+    align-items: center; 
+    padding: 0.6rem 0.8rem 0.6rem 1.5rem; 
+    box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+  }
+
+  textarea { 
+    flex: 1; 
+    background: transparent; 
+    border: none; 
+    color: var(--text); 
+    resize: none; 
+    outline: none; 
+    max-height: 150px; 
+    font-size: 1rem; 
+    padding: 0.5rem 0;
+  }
+
+  .send-btn { 
+    background: var(--accent); 
+    color: white; 
+    border: none; 
+    width: 45px; 
+    height: 45px; 
+    border-radius: 50%; 
+    cursor: pointer; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .send-btn:hover:not(:disabled) { transform: scale(1.05); background: #4f46e5; }
+
+  @keyframes slideUp { 
+    from { opacity: 0; transform: translateY(20px); } 
+    to { opacity: 1; transform: translateY(0); } 
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+	<header>
+		<img src="logo2.png" alt="Alive" style="height:32px;">
+			<div class="header-controls">
+				<select id="modeSelect" class="mode-select" onchange="resetChat()">
+					<option value="story">Interactive Storyline</option>
+					<option value="qa">General Chat</option>
+				</select>
+				<input type="password" id="apiKey" class="api-input" placeholder="API Key">
+					<a href="Ollama.html" >
+						<button class="send-btn" id="localBtn" title="Send to Local Ollama" style="background: #3b82f6; margin-left: 0.5rem;">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+								<rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+								<line x1="6" y1="6" x2="6.01" y2="6"></line>
+								<line x1="6" y1="18" x2="6.01" y2="18"></line>
+							</svg>
+						</button>
+					</a>	
+			</div>
+		</header>
+ 
+
+<main id="scrollArea">
+  <div class="chat-container" id="chatTimeline">
+    <div class="message ai">
+      <div class="story-node" style="padding: 1.5rem;">
+        <h3>Welcome, Traveler</h3>
+        <p>Ready to weave a new tale? Select a mode and let's begin your journey.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="input-wrapper">
+  <div class="input-container">
+    <textarea id="userInput" placeholder="What happens next?" rows="1" oninput="autoResize(this)" onkeydown="handleEnter(event)"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="handleSend()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  // ... (Keep your original JavaScript logic, it's solid) ...
+  // Ensure you keep the renderStoryNode adjustments below to match the new grid:
+
+  function renderStoryNode(node) {
+    const blockId = `opt-${Date.now()}`;
+    let html = `
+      <div class="story-node">
+        <div class="step-badge">Step ${stepCounter}</div>
+        <h3>${node.title || "Next Step"}</h3>
+        <p>${node.content || ""}</p>
+    `;
+
+    if (node.options && Array.isArray(node.options) && node.options.length > 0) {
+      if (node.question) {
+        html += `<div style="font-weight:600; margin-bottom:12px; color:var(--text); font-size:0.9rem;">${node.question}</div>`;
+      }
+      html += `<div class="node-options" id="${blockId}">`;
+      node.options.forEach((opt, index) => {
+        const optionText = String(opt || `Option ${index + 1}`);
+        const safeOpt = optionText.replace(/'/g, "\\'");
+        html += `
+          <button class="option-btn" 
+                  onclick="handleStoryChoice('${safeOpt}', this, '${blockId}')">
+            ${optionText}
+          </button>`;
+      });
+      html += `</div>`;
+    } else {
+      html += `<button class="option-btn" onclick="handleSend('Continue')">Continue Journey →</button>`;
+    }
+
+    html += `</div>`;
+    appendAiMessage(html);
+    stepCounter++;
+  }
+
+  // --- Copy your existing JS logic functions here ---
+  let chatHistory = [];
+  let stepCounter = 1;
+
+  function autoResize(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  }
+
+  function handleEnter(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  function scrollToBottom() {
+    const area = document.getElementById('scrollArea');
+    setTimeout(() => area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }), 80);
+  }
+
+  function resetChat() {
+    document.getElementById('chatTimeline').innerHTML = `<div class="message ai"><div class="bubble">Mode switched. Let's continue.</div></div>`;
+    chatHistory = [];
+    stepCounter = 1;
+  }
+
+  function appendUserMessage(text) {
+    const el = document.createElement('div');
+    el.className = 'message user';
+    el.innerHTML = `<div class="bubble">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>`;
+    document.getElementById('chatTimeline').appendChild(el);
+    scrollToBottom();
+  }
+
+  function appendAiMessage(html) {
+    const el = document.createElement('div');
+    el.className = 'message ai';
+    // If it's a story node, it doesn't need the extra bubble wrapper
+    if(html.includes('story-node')) {
+        el.innerHTML = html;
+    } else {
+        el.innerHTML = `<div class="bubble" style="background:var(--surface); border:1px solid var(--border);">${html}</div>`;
+    }
+    document.getElementById('chatTimeline').appendChild(el);
+    scrollToBottom();
+  }
+
+  async function handleSend(forced = null) {
+    const apiKeyInput = document.getElementById('apiKey').value.trim();
+    const text = forced || document.getElementById('userInput').value.trim();
+    const mode = document.getElementById('modeSelect').value;
+
+    if (!text) return;
+
+    document.getElementById('userInput').value = '';
+    autoResize(document.getElementById('userInput'));
+    document.getElementById('sendBtn').disabled = true;
+
+    appendUserMessage(text);
+    chatHistory.push({ role: 'user', parts: [{ text }] });
+
+    if (mode === 'qa') {
+      await processGeneralChat(apiKeyInput);
+    } else {
+      await processStoryMode(apiKeyInput);
+    }
+  }
+
+  async function processGeneralChat(apiKey) {
+    try {
+      const res = await fetch("http://localhost:3000/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ apiKey, contents: chatHistory })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "API Error");
+
+      const aiText = data.candidates[0].content.parts[0].text;
+      chatHistory.push({ role: 'model', parts: [{ text: aiText }] });
+      appendAiMessage(marked.parse(aiText));
+    } catch (e) {
+      appendAiMessage(`<span style="color:#ef4444">Error: ${e.message}</span>`);
+    } finally {
+      document.getElementById('sendBtn').disabled = false;
+    }
+  }
+
+  async function processStoryMode(apiKey) {
+    const systemPrompt = `You are an interactive text-adventure and process guide.
+    Generate ONLY the next single step. Always respond with valid JSON in this exact format:
+    {
+      "title": "Short title",
+      "content": "Detailed description",
+      "question": "What should we do next?",
+      "options": ["Option 1", "Option 2", "Option 3"]
+    }`;
+
+    try {
+      const res = await fetch("http://localhost:3000/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          apiKey,
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: chatHistory,
+          generationConfig: { temperature: 0.7, response_mime_type: "application/json" }
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "API Error");
+
+      const aiText = data.candidates[0].content.parts[0].text;
+      chatHistory.push({ role: 'model', parts: [{ text: aiText }] });
+
+      let node = JSON.parse(aiText);
+      renderStoryNode(node);
+    } catch (e) {
+      console.error(e);
+      appendAiMessage(`<span style="color:#ef4444">Error: ${e.message}</span>`);
+    } finally {
+      document.getElementById('sendBtn').disabled = false;
+    }
+  }
+
+  function handleStoryChoice(choice, btn, blockId) {
+    const container = document.getElementById(blockId);
+    if (container) {
+      Array.from(container.querySelectorAll('button')).forEach(b => b.disabled = true);
+    }
+    btn.classList.add('selected');
+    handleSend(`I choose: ${choice}`);
+  }
+</script>
+</body>
+</html>

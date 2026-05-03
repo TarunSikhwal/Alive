@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent — BrowserBot</title>
+<link rel="icon" href="/logo.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: #2a2a3d;
+    --accent: #7c6af7;
+    --accent2: #4fffb0;
+    --accent3: #ff6b6b;
+    --text: #e8e8f0;
+    --text2: #8888aa;
+    --text3: #5555770;
+    --font-mono: 'Space Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    gap: 12px;
+  }
+  .logo {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent2);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+  }
+  .logo span { color: var(--accent); }
+  .api-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 680px;
+  }
+  .api-row select {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+  .api-row input {
+    flex: 1;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .api-row input:focus { border-color: var(--accent); }
+  .api-row input::placeholder { color: var(--text2); }
+  .btn-connect {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 7px 16px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .btn-connect:hover { opacity: 0.85; transform: scale(0.98); }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #333;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .status-dot.connected { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    width: 360px;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .panel-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 16px 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .task-input-area {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .task-input-area textarea {
+    width: 100%;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    resize: none;
+    outline: none;
+    height: 80px;
+    transition: border-color 0.2s;
+  }
+  .task-input-area textarea:focus { border-color: var(--accent); }
+  .task-input-area textarea::placeholder { color: var(--text2); }
+  .task-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .btn-run {
+    flex: 1;
+    background: linear-gradient(135deg, var(--accent), #5b4de8);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 9px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .btn-run:hover { opacity: 0.85; }
+  .btn-run:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-sm {
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--text); }
+
+  /* ── STEPS LOG ── */
+  .steps-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+  }
+  .steps-log::-webkit-scrollbar { width: 4px; }
+  .steps-log::-webkit-scrollbar-track { background: transparent; }
+  .steps-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .step-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 13px;
+    animation: slideIn 0.25s ease;
+    border: 1px solid transparent;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .step-item.thinking { background: #1a1a2e; border-color: #2a2a4d; }
+  .step-item.action { background: #0d1a14; border-color: #1a3024; }
+  .step-item.result { background: #1a1408; border-color: #302810; }
+  .step-item.error { background: #1a0d0d; border-color: #3d1a1a; }
+  .step-item.done { background: #0d1a14; border-color: var(--accent2); }
+  .step-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .step-text { color: var(--text); line-height: 1.5; word-break: break-word; }
+  .step-text .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .step-item.thinking .label { color: var(--accent); }
+  .step-item.action .label { color: var(--accent2); }
+  .step-item.result .label { color: #f0c060; }
+  .step-item.error .label { color: var(--accent3); }
+  .step-item.done .label { color: var(--accent2); }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text2);
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .empty-state .big { font-size: 32px; margin-bottom: 10px; }
+
+  /* ── SAVED DATA ── */
+  .saved-panel {
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .saved-panel::-webkit-scrollbar { width: 4px; }
+  .saved-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .saved-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .saved-item .si-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--accent2);
+    margin-bottom: 3px;
+    text-transform: uppercase;
+  }
+  .saved-item .si-val { color: var(--text); word-break: break-all; }
+  .export-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 0 0 4px;
+  }
+  .btn-export {
+    flex: 1;
+    background: var(--surface2);
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+    border-radius: var(--radius);
+    padding: 7px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .btn-export:hover { background: var(--accent2); color: #000; }
+
+  /* ── RIGHT PANEL: BROWSER ── */
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .browser-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .browser-dots { display: flex; gap: 5px; }
+  .browser-dots span {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .browser-dots .d1 { background: #ff5f57; }
+  .browser-dots .d2 { background: #febc2e; }
+  .browser-dots .d3 { background: #28c840; }
+  .url-bar {
+    flex: 1;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .url-bar:focus { border-color: var(--accent); }
+  .btn-go {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    font-family: var(--font-body);
+  }
+  .btn-go:hover { opacity: 0.85; }
+  .browser-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 6px 12px 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    padding: 5px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab.active { background: var(--bg); color: var(--text); border-color: var(--accent); }
+  .tab .tab-close { color: var(--text2); font-size: 14px; line-height: 1; }
+  .tab .tab-close:hover { color: var(--accent3); }
+  .btn-new-tab {
+    background: transparent;
+    color: var(--text2);
+    border: 1px dashed var(--border);
+    border-radius: 6px 6px 0 0;
+    padding: 5px 12px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .btn-new-tab:hover { color: var(--accent); }
+  .browser-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .browser-content iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+  .browser-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--text2);
+  }
+  .browser-overlay .ov-icon { font-size: 48px; }
+  .browser-overlay h2 { font-family: var(--font-mono); font-size: 18px; color: var(--text); }
+  .browser-overlay p { font-size: 13px; line-height: 1.6; text-align: center; max-width: 340px; }
+  .quick-sites {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  .quick-site {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text2);
+  }
+  .quick-site:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── AGENT CURSOR OVERLAY ── */
+  .agent-cursor {
+    position: fixed;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent2);
+    border: 2px solid #fff;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: left 0.4s cubic-bezier(.34,1.56,.64,1), top 0.4s cubic-bezier(.34,1.56,.64,1);
+    display: none;
+    box-shadow: 0 0 12px var(--accent2);
+  }
+  .agent-cursor.active { display: block; }
+
+  /* ── SPINNER ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* ── NOTIFICATION ── */
+  .notif {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--accent2);
+    border-radius: var(--radius);
+    padding: 12px 18px;
+    font-size: 13px;
+    z-index: 1000;
+    animation: fadeInUp 0.3s ease;
+    display: none;
+    max-width: 320px;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- Agent cursor -->
+<div class="agent-cursor" id="agentCursor"></div>
+
+<!-- Notification -->
+<div class="notif" id="notif"></div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="logo">Browser<span>Bot</span> 🦙</div>
+  <div class="api-row">
+    <span style="font-size:13px;color:var(--text2);white-space:nowrap;">🦙 Ollama</span>
+    <select id="modelSelect" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-family:var(--font-body);font-size:13px;outline:none;cursor:pointer;">
+      <option value="deepseek-r1:14b">deepseek-r1:14b</option>
+      <option value="gemma4:31b">gemma4:31b</option>
+      <option value="llama3.1:8b">llama3.1:8b</option>
+    </select>
+    <input id="ollamaUrl" value="http://localhost:11434" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;font-family:var(--font-mono);font-size:12px;outline:none;" />
+    <div class="status-dot" id="statusDot"></div>
+    <button class="btn-connect" onclick="connectAgent()">Connect</button>
+  </div>
+</div>
+
+<script>
+loadModels();
+const model = document.getElementById("modelInput").value;
+
+async function loadModels() {
+  const res = await fetch("http://localhost:11434/api/tags");
+  const data = await res.json();
+
+  const select = document.getElementById("modelSelect");
+  select.innerHTML = "";
+
+  data.models.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.name;
+    opt.textContent = m.name;
+    select.appendChild(opt);
+  });
+}
+</script>
+<!-- Main layout -->
+<div class="main">
+
+  <!-- Left panel -->
+  <div class="left-panel">
+    <div class="panel-title">
+      <span>🤖 Agent Task</span>
+    </div>
+
+    <div class="task-input-area">
+      <textarea id="taskInput" placeholder="Describe what you want the agent to do...&#10;&#10;e.g. 'Go to Wikipedia, search for Artificial Intelligence, copy the intro paragraph and save it'"></textarea>
+      <div class="task-actions">
+        <button class="btn-run" id="runBtn" onclick="runTask()" disabled>
+          <span id="runBtnIcon">▶</span>
+          <span id="runBtnText">Run Task</span>
+        </button>
+        <button class="btn-sm" onclick="clearLog()">Clear</button>
+      </div>
+    </div>
+
+    <div class="panel-title">
+      <span>📋 Agent Log</span>
+      <span id="stepCount" style="font-size:10px; color: var(--accent2);"></span>
+    </div>
+
+    <div class="steps-log" id="stepsLog">
+      <div class="empty-state">
+        <div class="big">🦙</div>
+        Select a model, make sure<br>Ollama is running locally, then<br>click <b>Connect</b> and give the agent a task.<br><br>
+        The agent will plan steps,<br>browse the web, and save results.
+      </div>
+    </div>
+
+    <div class="panel-title" style="border-top: 1px solid var(--border);">
+      <span>💾 Saved Data</span>
+      <span id="dataCount" style="font-size:10px; color: var(--accent2);">0 items</span>
+    </div>
+    <div class="saved-panel" id="savedPanel">
+      <div style="color: var(--text2); font-size: 12px; text-align: center; padding: 12px;">No data saved yet</div>
+    </div>
+    <div class="export-row">
+      <button class="btn-export" onclick="exportCSV()">📊 Excel/CSV</button>
+      <button class="btn-export" onclick="exportTXT()">📝 Notepad</button>
+      <button class="btn-export" onclick="exportJSON()">🗂 JSON</button>
+    </div>
+  </div>
+
+  <!-- Right panel: browser -->
+  <div class="right-panel">
+    <div class="browser-bar">
+      <div class="browser-dots">
+        <span class="d1"></span><span class="d2"></span><span class="d3"></span>
+      </div>
+      <input class="url-bar" id="urlBar" placeholder="https://…" onkeydown="if(event.key==='Enter') loadURL()" />
+      <button class="btn-go" onclick="loadURL()">Go</button>
+    </div>
+    <div class="browser-tabs" id="tabBar">
+      <div class="tab active" id="tab0" onclick="switchTab(0)">🌐 New Tab</div>
+      <button class="btn-new-tab" onclick="addTab()" title="New tab">+</button>
+    </div>
+    <div class="browser-content" id="browserContent">
+      <div class="browser-overlay" id="browserOverlay">
+        <div class="ov-icon">🌐</div>
+        <h2>Built-in Browser</h2>
+        <p>Navigate to any website. The AI agent can read the current page and help you extract or interact with content.</p>
+        <div class="quick-sites">
+          <div class="quick-site" onclick="goTo('https://en.wikipedia.org')">📖 Wikipedia</div>
+          <div class="quick-site" onclick="goTo('https://news.ycombinator.com')">📰 HackerNews</div>
+          <div class="quick-site" onclick="goTo('https://github.com')">💻 GitHub</div>
+          <div class="quick-site" onclick="goTo('https://www.reddit.com')">🔴 Reddit</div>
+          <div class="quick-site" onclick="goTo('https://quotes.toscrape.com')">💬 Quotes Demo</div>
+          <div class="quick-site" onclick="goTo('https://books.toscrape.com')">📚 Books Demo</div>
+        </div>
+      </div>
+      <iframe id="browserFrame" style="display:none;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" src="about:blank"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let ollamaBaseUrl = 'http://localhost:11434';
+let selectedModel = 'deepseek-r1:14b';
+let connected = false;
+let running = false;
+let savedData = [];
+let tabs = [{ url: '', title: 'New Tab' }];
+let activeTab = 0;
+let stepCounter = 0;
+
+// ── CONNECT ──
+async function connectAgent() {
+  ollamaBaseUrl = (document.getElementById('ollamaUrl').value.trim() || 'http://localhost:11434').replace(/\/$/, '');
+  selectedModel = document.getElementById('modelSelect').value;
+
+  showNotif('⏳ Checking Ollama connection…');
+  try {
+    const res = await fetch(`${ollamaBaseUrl}/api/tags`, { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) throw new Error('Non-200 from Ollama');
+    const data = await res.json();
+    const available = (data.models || []).map(m => m.name);
+    const modelBase = selectedModel.split(':')[0];
+    const found = available.some(n => n === selectedModel || n.startsWith(modelBase));
+    if (!found) {
+      showNotif(`⚠️ Model "${selectedModel}" not found. Run: ollama pull ${selectedModel}`, 'error');
+      return;
+    }
+  } catch(e) {
+    showNotif(`❌ Cannot reach Ollama at ${ollamaBaseUrl}. Is it running?`, 'error');
+    return;
+  }
+
+  connected = true;
+  document.getElementById('statusDot').classList.add('connected');
+  document.getElementById('runBtn').disabled = false;
+  showNotif(`✅ Connected — ${selectedModel}`);
+}
+
+// ── TASK RUNNER ──
+async function runTask() {
+  if (!connected) { showNotif('⚠️ Connect to Ollama first', 'error'); return; }
+  if (running) return;
+  const task = document.getElementById('taskInput').value.trim();
+  if (!task) { showNotif('⚠️ Enter a task first', 'error'); return; }
+
+  running = true;
+  stepCounter = 0;
+  document.getElementById('runBtnIcon').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('runBtnText').textContent = 'Running…';
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('stepsLog').innerHTML = '';
+
+  const currentURL = document.getElementById('urlBar').value.trim();
+  let pageContext = currentURL ? `Current browser URL: ${currentURL}` : 'Browser is on the home/blank page.';
+
+  addStep('thinking', '🧠', 'Thinking', `Planning how to complete: "${task}"`);
+
+  const plan = await callAI(task, pageContext);
+  if (!plan) {
+    running = false;
+    document.getElementById('runBtnIcon').textContent = '▶';
+    document.getElementById('runBtnText').textContent = 'Run Task';
+    document.getElementById('runBtn').disabled = false;
+    return;
+  }
+
+  await executePlan(plan, task);
+
+  running = false;
+  document.getElementById('runBtnIcon').textContent = '▶';
+  document.getElementById('runBtnText').textContent = 'Run Task';
+  document.getElementById('runBtn').disabled = false;
+}
+
+async function callAI(task, pageContext) {
+  const systemPrompt = `You are BrowserBot, an AI agent that helps users automate browser tasks. You receive a task and current browser context, then output a structured JSON plan.
+
+Respond ONLY with valid JSON — no markdown fences, no backticks, no explanation. Use this exact format:
+{
+  "summary": "Brief description of what you'll do",
+  "steps": [
+    { "type": "navigate", "description": "Human readable step description", "url": "https://..." },
+    { "type": "extract", "description": "What to extract", "selector": "css or description", "saveAs": "key name" },
+    { "type": "click", "description": "What to click", "target": "button/link description" },
+    { "type": "fill", "description": "Fill a form field", "field": "field name", "value": "value to enter" },
+    { "type": "save", "description": "Save extracted info", "key": "label", "value": "the actual data" },
+    { "type": "analyze", "description": "Analyze current page content" }
+  ],
+  "extractedData": {}
+}
+
+Be practical. For tasks needing real data, include realistic mock data demonstrating the workflow. Always include at least one "save" step with real data.`;
+
+  try {
+    return await callOllama(task, pageContext, systemPrompt);
+  } catch (e) {
+    addStep('error', '❌', 'Error', `Ollama call failed: ${e.message}`);
+    return null;
+  }
+}
+
+async function callOllama(task, pageContext, systemPrompt) {
+  addStep('thinking', '🦙', 'Ollama', `Sending to ${selectedModel}…`);
+
+  const res = await fetch(`${ollamaBaseUrl}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: selectedModel,
+      stream: false,
+      options: { temperature: 0.3, num_predict: 2000 },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Task: ${task}\nContext: ${pageContext}` }
+      ]
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || 'Ollama /api/chat error');
+  }
+
+  const data = await res.json();
+  const raw = data.message?.content || data.response || '';
+
+  // Strip <think>…</think> blocks (deepseek-r1 emits these)
+  const stripped = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  return parseJSON(stripped);
+}
+
+function parseJSON(text) {
+  const clean = text.replace(/```json|```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+async function executePlan(plan, task) {
+  if (!plan || !plan.steps) {
+    addStep('error', '❌', 'Parse Error', 'Could not parse agent plan');
+    return;
+  }
+
+  addStep('thinking', '📋', 'Plan Ready', plan.summary || 'Executing task plan…');
+  await sleep(600);
+
+  for (let i = 0; i < plan.steps.length; i++) {
+    const step = plan.steps[i];
+    await sleep(500 + Math.random() * 500);
+
+    if (step.type === 'navigate') {
+      addStep('action', '🌐', 'Navigate', step.description);
+      if (step.url) {
+        await animateNavigation(step.url);
+        goTo(step.url);
+      }
+    } else if (step.type === 'extract') {
+      addStep('action', '🔍', 'Extract', step.description);
+      await animateCursor();
+      await sleep(600);
+      addStep('result', '📄', 'Extracted', `Field: "${step.saveAs || 'data'}" — ${step.description}`);
+    } else if (step.type === 'click') {
+      addStep('action', '👆', 'Click', step.description + (step.target ? ` → "${step.target}"` : ''));
+      await animateCursor();
+    } else if (step.type === 'fill') {
+      addStep('action', '⌨️', 'Fill Field', `${step.field}: "${step.value}"`);
+      await animateCursor();
+    } else if (step.type === 'save') {
+      addStep('result', '💾', 'Save Data', `${step.key}: ${step.value}`);
+      saveDataItem(step.key, step.value);
+    } else if (step.type === 'analyze') {
+      addStep('thinking', '🔬', 'Analyze', step.description);
+      await sleep(800);
+    }
+    updateStepCount();
+  }
+
+  // If plan has extractedData
+  if (plan.extractedData && Object.keys(plan.extractedData).length > 0) {
+    for (const [k, v] of Object.entries(plan.extractedData)) {
+      saveDataItem(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+    }
+  }
+
+  await sleep(400);
+  addStep('done', '✅', 'Complete', `Task finished! ${savedData.length} item(s) saved.`);
+  showNotif(`✅ Task complete! ${savedData.length} item(s) saved.`);
+  updateStepCount();
+}
+
+// ── BROWSER ──
+function loadURL() {
+  const url = document.getElementById('urlBar').value.trim();
+  if (!url) return;
+  let full = url.startsWith('http') ? url : 'https://' + url;
+  goTo(full);
+}
+
+function goTo(url) {
+  document.getElementById('urlBar').value = url;
+  document.getElementById('browserOverlay').style.display = 'none';
+  const frame = document.getElementById('browserFrame');
+  frame.style.display = 'block';
+  frame.src = url;
+  tabs[activeTab].url = url;
+  tabs[activeTab].title = new URL(url).hostname;
+  renderTabs();
+
+  frame.onerror = () => {
+    showNotif('⚠️ This site blocks embedding. Try another URL.');
+    document.getElementById('browserOverlay').style.display = 'flex';
+    frame.style.display = 'none';
+  };
+}
+
+// ── TABS ──
+function addTab() {
+  tabs.push({ url: '', title: 'New Tab' });
+  activeTab = tabs.length - 1;
+  renderTabs();
+  document.getElementById('browserOverlay').style.display = 'flex';
+  document.getElementById('browserFrame').style.display = 'none';
+  document.getElementById('urlBar').value = '';
+}
+
+function switchTab(i) {
+  activeTab = i;
+  renderTabs();
+  if (tabs[i].url) {
+    goTo(tabs[i].url);
+  } else {
+    document.getElementById('browserOverlay').style.display = 'flex';
+    document.getElementById('browserFrame').style.display = 'none';
+    document.getElementById('urlBar').value = '';
+  }
+}
+
+function closeTab(i, e) {
+  e.stopPropagation();
+  if (tabs.length === 1) { tabs[0] = { url: '', title: 'New Tab' }; switchTab(0); return; }
+  tabs.splice(i, 1);
+  activeTab = Math.min(activeTab, tabs.length - 1);
+  renderTabs();
+  switchTab(activeTab);
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tabBar');
+  bar.innerHTML = '';
+  tabs.forEach((t, i) => {
+    const div = document.createElement('div');
+    div.className = 'tab' + (i === activeTab ? ' active' : '');
+    div.innerHTML = `<span>🌐 ${t.title}</span><span class="tab-close" onclick="closeTab(${i},event)">×</span>`;
+    div.onclick = (e) => { if (!e.target.classList.contains('tab-close')) switchTab(i); };
+    bar.appendChild(div);
+  });
+  const btn = document.createElement('button');
+  btn.className = 'btn-new-tab';
+  btn.textContent = '+';
+  btn.onclick = addTab;
+  bar.appendChild(btn);
+}
+
+// ── ANIMATION ──
+async function animateCursor() {
+  const cursor = document.getElementById('agentCursor');
+  cursor.classList.add('active');
+  const bRect = document.getElementById('browserContent').getBoundingClientRect();
+  cursor.style.left = (bRect.left + Math.random() * bRect.width * 0.6 + bRect.width * 0.2) + 'px';
+  cursor.style.top = (bRect.top + Math.random() * bRect.height * 0.6 + bRect.height * 0.2) + 'px';
+  await sleep(800);
+  cursor.classList.remove('active');
+}
+
+async function animateNavigation(url) {
+  const bar = document.getElementById('urlBar');
+  bar.style.borderColor = 'var(--accent)';
+  bar.value = url;
+  await sleep(400);
+  bar.style.borderColor = '';
+}
+
+// ── STEPS LOG ──
+function addStep(type, icon, label, text) {
+  const log = document.getElementById('stepsLog');
+  const div = document.createElement('div');
+  div.className = `step-item ${type}`;
+  div.innerHTML = `<div class="step-icon">${icon}</div><div class="step-text"><span class="label">${label}</span>${escHtml(text)}</div>`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  stepCounter++;
+}
+
+function updateStepCount() {
+  document.getElementById('stepCount').textContent = stepCounter + ' steps';
+}
+
+function clearLog() {
+  document.getElementById('stepsLog').innerHTML = `<div class="empty-state"><div class="big">🤖</div>Log cleared. Ready for next task.</div>`;
+  stepCounter = 0;
+  updateStepCount();
+}
+
+// ── SAVED DATA ──
+function saveDataItem(key, value) {
+  savedData.push({ key, value, time: new Date().toLocaleTimeString() });
+  renderSavedData();
+}
+
+function renderSavedData() {
+  const panel = document.getElementById('savedPanel');
+  if (savedData.length === 0) {
+    panel.innerHTML = '<div style="color: var(--text2); font-size: 12px; text-align: center; padding: 12px;">No data saved yet</div>';
+    return;
+  }
+  panel.innerHTML = savedData.map((d, i) =>
+    `<div class="saved-item">
+      <div class="si-title">${escHtml(d.key)} <span style="color:var(--text2);font-weight:400">${d.time}</span></div>
+      <div class="si-val">${escHtml(d.value)}</div>
+    </div>`
+  ).join('');
+  panel.scrollTop = panel.scrollHeight;
+  document.getElementById('dataCount').textContent = savedData.length + ' items';
+}
+
+// ── EXPORT ──
+function exportCSV() {
+  if (!savedData.length) { showNotif('⚠️ No data to export', 'error'); return; }
+  const headers = 'Key,Value,Time\n';
+  const rows = savedData.map(d => `"${d.key}","${d.value.replace(/"/g,'""')}","${d.time}"`).join('\n');
+  download('agent_data.csv', headers + rows, 'text/csv');
+  showNotif('📊 Exported as Excel/CSV');
+}
+
+function exportTXT() {
+  if (!savedData.length) { showNotif('⚠️ No data to export', 'error'); return; }
+  const lines = savedData.map(d => `[${d.time}] ${d.key}:\n${d.value}`).join('\n\n---\n\n');
+  download('agent_notes.txt', lines, 'text/plain');
+  showNotif('📝 Exported as Notepad TXT');
+}
+
+function exportJSON() {
+  if (!savedData.length) { showNotif('⚠️ No data to export', 'error'); return; }
+  download('agent_data.json', JSON.stringify(savedData, null, 2), 'application/json');
+  showNotif('🗂 Exported as JSON');
+}
+
+function download(name, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = name;
+  a.click();
+}
+
+// ── UTILS ──
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showNotif(msg, type) {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.style.display = 'block';
+  n.style.borderColor = type === 'error' ? 'var(--accent3)' : 'var(--accent2)';
+  clearTimeout(window._notifTimer);
+  window._notifTimer = setTimeout(() => { n.style.display = 'none'; }, 3200);
+}
+
+// Allow Enter in textarea + Ctrl+Enter to run
+document.getElementById('taskInput').addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') runTask();
+});
+</script>
+</body>
+</html>
