@@ -2,6 +2,8 @@
 
 Try here : https://alive.itsikhwal.com/
 
+Ask questions like : Am i eligible for voting?
+
 ### **Chosen Vertical**
 The chosen vertical is **Interactive Edutainment and Narrative Learning**. Specifically, this solution focuses on transforming static information into an immersive, step-by-step journey where the user is the protagonist of their own learning or story process[
 
